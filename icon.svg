@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="128" height="128" rx="16" fill="#2C3E50"/>
+  
+  <!-- Left bracket (JSON) -->
+  <path d="M 30 35 Q 25 35 25 40 L 25 60 Q 25 65 20 65 Q 25 65 25 70 L 25 90 Q 25 95 30 95" 
+        stroke="#3498DB" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Right bracket (JSON) -->
+  <path d="M 98 35 Q 103 35 103 40 L 103 60 Q 103 65 108 65 Q 103 65 103 70 L 103 90 Q 103 95 98 95" 
+        stroke="#3498DB" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Lambda symbol (transformation) -->
+  <text x="64" y="75" font-family="Arial, sans-serif" font-size="48" font-weight="bold" 
+        fill="#E74C3C" text-anchor="middle">λ</text>
+  
+  <!-- Small dots for decoration -->
+  <circle cx="45" cy="64" r="3" fill="#95A5A6" opacity="0.6"/>
+  <circle cx="83" cy="64" r="3" fill="#95A5A6" opacity="0.6"/>
+</svg>

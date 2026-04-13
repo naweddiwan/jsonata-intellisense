@@ -1,0 +1,110 @@
+{
+  "name": "jsonata-intellisense",
+  "displayName": "JSONata IntelliSense",
+  "description": "Syntax highlighting, completions, hover, signature help, and diagnostics for JSONata (.jsonata) files.",
+  "version": "0.0.1",
+  "publisher": "nawed-diwan",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters"
+  ],
+  "keywords": [
+    "jsonata",
+    "json",
+    "query",
+    "transform",
+    "intellisense"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naweddiwan/jsonata-intellisense"
+  },
+  "license": "MIT",
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:jsonata"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "jsonata",
+        "aliases": [
+          "JSONata",
+          "jsonata"
+        ],
+        "extensions": [
+          ".jsonata"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "jsonata",
+        "scopeName": "source.jsonata",
+        "path": "./syntaxes/jsonata.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "jsonata",
+        "path": "./snippets/jsonata.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "jsonata.testExpression",
+        "title": "Test JSONata Expression",
+        "category": "JSONata",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "jsonata.testExpression",
+          "when": "resourceLangId == jsonata",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "jsonata.testExpression",
+          "when": "resourceLangId == jsonata",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "jsonata.testExpression",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "resourceLangId == jsonata"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --platform=node --format=cjs --minify",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --platform=node --format=cjs --sourcemap --watch",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.24.0",
+    "esbuild": "^0.21.0",
+    "sharp": "^0.34.5",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "jsonata": "^2.0.5"
+  }
+}

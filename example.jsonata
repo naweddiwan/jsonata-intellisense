@@ -1,0 +1,7 @@
+/* Simple example: extract names from an array */
+$map(users, function($user) {
+  {
+    "fullName": $user.firstName & " " & $user.lastName,
+    "email": $user.email
+  }
+})

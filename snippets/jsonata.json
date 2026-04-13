@@ -1,0 +1,33 @@
+{
+  "Lambda function": {
+    "prefix": "function",
+    "body": ["function($${1:x}) { $0 }"],
+    "description": "JSONata lambda function"
+  },
+  "Variable binding": {
+    "prefix": "let",
+    "body": ["$${1:name} := $0"],
+    "description": "Bind a variable"
+  },
+  "Block expression": {
+    "prefix": "block",
+    "body": ["(", "\t$${1:x} := $2;", "\t$0", ")"],
+    "description": "Block expression"
+  },
+  "Ternary": {
+    "prefix": "if",
+    "body": ["${1:cond} ? ${2:then} : ${3:else}"]
+  },
+  "Map chain": {
+    "prefix": "map",
+    "body": ["${1:data} ~> $map(function($$v) { $0 })"]
+  },
+  "Filter chain": {
+    "prefix": "filter",
+    "body": ["${1:data} ~> $filter(function($$v) { $0 })"]
+  },
+  "Reduce chain": {
+    "prefix": "reduce",
+    "body": ["${1:data} ~> $reduce(function($$acc, $$v) { $0 }, ${2:0})"]
+  }
+}
