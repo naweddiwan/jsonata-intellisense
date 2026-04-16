@@ -436,19 +436,41 @@ class TestPanelProvider {
     .section {
       display: flex;
       flex-direction: column;
-      margin-bottom: 16px;
+      min-height: 0;
     }
     .input-section {
-      flex: 1;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
+      flex: 1 1 0;
+      min-height: 80px;
     }
     .output-section {
-      flex: 1;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
+      flex: 1 1 0;
+      min-height: 80px;
+    }
+    .splitter {
+      flex: 0 0 10px;
+      position: relative;
+      cursor: ns-resize;
+      background: transparent;
+    }
+    .splitter::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--vscode-panel-border);
+      transform: translateY(-50%);
+      transition: background-color 0.1s ease;
+    }
+    .splitter:hover::after,
+    .splitter.dragging::after {
+      background: var(--vscode-focusBorder);
+      height: 3px;
+    }
+    body.resizing {
+      cursor: ns-resize;
+      user-select: none;
     }
     .editor {
       flex: 1;
@@ -601,6 +623,7 @@ class TestPanelProvider {
         <textarea id="input" spellcheck="false" placeholder='Paste your JSON here, e.g.:\n{\n  "name": "John",\n  "age": 30\n}'></textarea>
       </div>
     </div>
+    <div class="splitter" id="splitter" title="Drag to resize"></div>
     <div class="section output-section">
       <h2>Output</h2>
       <div class="findbar" id="findbarOutput" hidden>
@@ -620,6 +643,13 @@ class TestPanelProvider {
     const outputEl = document.getElementById('output');
     const inputSectionEl = inputEl.closest('.section');
     const outputSectionEl = outputEl.closest('.section');
+    const splitterEl = document.getElementById('splitter');
+    const containerEl = document.querySelector('.container');
+
+    function updateState(patch) {
+      const prev = vscode.getState() || {};
+      vscode.setState(Object.assign({}, prev, patch));
+    }
 
     function escapeHtml(str) {
       return str
@@ -662,7 +692,47 @@ class TestPanelProvider {
     if (previousState && previousState.input) {
       inputEl.value = previousState.input;
     }
+    let inputRatio = (previousState && typeof previousState.inputRatio === 'number')
+      ? previousState.inputRatio
+      : 0.5;
+    function applyRatio() {
+      inputSectionEl.style.flex = inputRatio + ' 1 0';
+      outputSectionEl.style.flex = (1 - inputRatio) + ' 1 0';
+    }
+    applyRatio();
     updateInputHighlight();
+
+    // Splitter drag
+    let dragState = null;
+    splitterEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const containerRect = containerEl.getBoundingClientRect();
+      const cs = getComputedStyle(containerEl);
+      const paddingTop = parseFloat(cs.paddingTop);
+      const paddingBottom = parseFloat(cs.paddingBottom);
+      const available = containerRect.height - paddingTop - paddingBottom - splitterEl.offsetHeight;
+      dragState = {
+        containerTop: containerRect.top + paddingTop,
+        available,
+      };
+      splitterEl.classList.add('dragging');
+      document.body.classList.add('resizing');
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragState) return;
+      const minH = 80;
+      let newInputH = e.clientY - dragState.containerTop;
+      newInputH = Math.max(minH, Math.min(newInputH, dragState.available - minH));
+      inputRatio = newInputH / dragState.available;
+      applyRatio();
+    });
+    window.addEventListener('mouseup', () => {
+      if (!dragState) return;
+      dragState = null;
+      splitterEl.classList.remove('dragging');
+      document.body.classList.remove('resizing');
+      updateState({ inputRatio });
+    });
 
     function runEvaluation() {
       vscode.postMessage({
@@ -852,7 +922,7 @@ class TestPanelProvider {
 
     // Auto-evaluate on input changes (debounced)
     inputEl.addEventListener('input', () => {
-      vscode.setState({ input: inputEl.value });
+      updateState({ input: inputEl.value });
       updateInputHighlight();
       inputFind.apply(true);
       scheduleEvaluation();
