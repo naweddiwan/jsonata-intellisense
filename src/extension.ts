@@ -333,6 +333,7 @@ class TestPanelProvider {
     const changeEditorSub = vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor && editor.document.languageId === LANG) {
         this.currentDocument = editor.document;
+        this.panel?.webview.postMessage({ command: "reevaluate" });
       }
     });
 
@@ -340,6 +341,7 @@ class TestPanelProvider {
     const changeDocSub = vscode.workspace.onDidChangeTextDocument((e) => {
       if (this.currentDocument && e.document.uri.toString() === this.currentDocument.uri.toString()) {
         this.currentDocument = e.document;
+        this.panel?.webview.postMessage({ command: "reevaluate" });
       }
     });
 
@@ -480,23 +482,6 @@ class TestPanelProvider {
     .error {
       color: var(--vscode-errorForeground);
     }
-    button {
-      padding: 6px 14px;
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 2px;
-      cursor: pointer;
-      font-size: 13px;
-      margin-top: 8px;
-      align-self: flex-start;
-    }
-    button:hover {
-      background-color: var(--vscode-button-hoverBackground);
-    }
-    button:active {
-      background-color: var(--vscode-button-background);
-    }
   </style>
 </head>
 <body>
@@ -504,7 +489,6 @@ class TestPanelProvider {
     <div class="section input-section">
       <h2>Input JSON</h2>
       <textarea id="input" placeholder='Paste your JSON here, e.g.:\n{\n  "name": "John",\n  "age": 30\n}'></textarea>
-      <button id="evaluateBtn">Test Expression</button>
     </div>
     <div class="section output-section">
       <h2>Output</h2>
@@ -515,18 +499,12 @@ class TestPanelProvider {
     const vscode = acquireVsCodeApi();
     const inputEl = document.getElementById('input');
     const outputEl = document.getElementById('output');
-    const evaluateBtn = document.getElementById('evaluateBtn');
 
     // Restore previous state
     const previousState = vscode.getState();
     if (previousState && previousState.input) {
       inputEl.value = previousState.input;
     }
-
-    // Save state when input changes
-    inputEl.addEventListener('input', () => {
-      vscode.setState({ input: inputEl.value });
-    });
 
     function runEvaluation() {
       vscode.postMessage({
@@ -535,18 +513,19 @@ class TestPanelProvider {
       });
     }
 
-    // Button click handler
-    evaluateBtn.addEventListener('click', runEvaluation);
+    let debounceTimer;
+    function scheduleEvaluation() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runEvaluation, 300);
+    }
 
-    // Handle Enter key with Cmd/Ctrl modifier
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        runEvaluation();
-      }
+    // Auto-evaluate on input changes (debounced)
+    inputEl.addEventListener('input', () => {
+      vscode.setState({ input: inputEl.value });
+      scheduleEvaluation();
     });
 
-    // Receive results from extension
+    // Receive results and re-evaluation triggers from extension
     window.addEventListener('message', event => {
       const message = event.data;
       if (message.command === 'result') {
@@ -557,8 +536,15 @@ class TestPanelProvider {
           outputEl.textContent = message.output;
           outputEl.className = 'output';
         }
+      } else if (message.command === 'reevaluate') {
+        scheduleEvaluation();
       }
     });
+
+    // Evaluate on initial load if there's existing input
+    if (inputEl.value.trim() !== '') {
+      scheduleEvaluation();
+    }
   </script>
 </body>
 </html>`;
