@@ -450,27 +450,62 @@ class TestPanelProvider {
       display: flex;
       flex-direction: column;
     }
-    textarea {
+    .editor {
       flex: 1;
-      width: 100%;
-      padding: 8px;
-      font-family: var(--vscode-editor-font-family);
-      font-size: var(--vscode-editor-font-size);
-      background-color: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
+      position: relative;
       border: 1px solid var(--vscode-input-border);
       border-radius: 2px;
-      resize: vertical;
-      box-sizing: border-box;
+      background-color: var(--vscode-input-background);
+      overflow: hidden;
     }
-    textarea:focus {
+    .editor:focus-within {
       outline: 1px solid var(--vscode-focusBorder);
+    }
+    .editor .highlight,
+    .editor textarea {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 8px;
+      margin: 0;
+      border: 0;
+      box-sizing: border-box;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow: auto;
+      tab-size: 2;
+    }
+    .editor .highlight {
+      pointer-events: none;
+      color: var(--vscode-input-foreground);
+      z-index: 0;
+    }
+    .editor textarea {
+      background: transparent;
+      color: transparent;
+      caret-color: var(--vscode-input-foreground);
+      resize: none;
+      outline: none;
+      z-index: 1;
+    }
+    .editor textarea::selection {
+      background: var(--vscode-editor-selectionBackground);
+    }
+    .editor textarea::placeholder {
+      color: var(--vscode-input-placeholderForeground);
     }
     .output {
       flex: 1;
+      margin: 0;
       padding: 8px;
       font-family: var(--vscode-editor-font-family);
       font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
       background-color: var(--vscode-editor-background);
       color: var(--vscode-editor-foreground);
       border: 1px solid var(--vscode-panel-border);
@@ -478,9 +513,75 @@ class TestPanelProvider {
       overflow: auto;
       white-space: pre-wrap;
       word-wrap: break-word;
+      box-sizing: border-box;
     }
     .error {
       color: var(--vscode-errorForeground);
+    }
+    .json-key { color: var(--vscode-debugTokenExpression-name, #9cdcfe); }
+    .json-string { color: var(--vscode-debugTokenExpression-string, #ce9178); }
+    .json-number { color: var(--vscode-debugTokenExpression-number, #b5cea8); }
+    .json-boolean { color: var(--vscode-debugTokenExpression-boolean, #569cd6); }
+    .json-null { color: var(--vscode-debugTokenExpression-boolean, #569cd6); }
+    .findbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      margin-bottom: 8px;
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+      border-radius: 2px;
+    }
+    .findbar[hidden] { display: none; }
+    .findbar input {
+      flex: 1;
+      min-width: 0;
+      padding: 3px 6px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, transparent);
+      border-radius: 2px;
+      outline: none;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+    }
+    .findbar input:focus {
+      outline: 1px solid var(--vscode-focusBorder);
+    }
+    .find-count {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+      min-width: 56px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .findbar button {
+      background: transparent;
+      color: var(--vscode-foreground);
+      border: none;
+      padding: 2px 6px;
+      cursor: pointer;
+      border-radius: 2px;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .findbar button:hover {
+      background: var(--vscode-toolbar-hoverBackground, rgba(128,128,128,0.2));
+    }
+    .findbar button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    mark.search-match {
+      background: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33));
+      color: inherit;
+      border-radius: 2px;
+      padding: 0;
+    }
+    mark.search-match.active {
+      background: var(--vscode-editor-findMatchBackground, rgba(166, 120, 66, 0.66));
+      outline: 1px solid var(--vscode-editor-findMatchBorder, transparent);
     }
   </style>
 </head>
@@ -488,23 +589,80 @@ class TestPanelProvider {
   <div class="container">
     <div class="section input-section">
       <h2>Input JSON</h2>
-      <textarea id="input" placeholder='Paste your JSON here, e.g.:\n{\n  "name": "John",\n  "age": 30\n}'></textarea>
+      <div class="findbar" id="findbarInput" hidden>
+        <input id="findInputQuery" type="text" placeholder="Find in input..." />
+        <span class="find-count" id="findInputCount"></span>
+        <button id="findInputPrev" title="Previous match (Shift+Enter)">&#8593;</button>
+        <button id="findInputNext" title="Next match (Enter)">&#8595;</button>
+        <button id="findInputClose" title="Close (Escape)">&#10005;</button>
+      </div>
+      <div class="editor">
+        <pre id="inputHighlight" class="highlight" aria-hidden="true"></pre>
+        <textarea id="input" spellcheck="false" placeholder='Paste your JSON here, e.g.:\n{\n  "name": "John",\n  "age": 30\n}'></textarea>
+      </div>
     </div>
     <div class="section output-section">
       <h2>Output</h2>
-      <div id="output" class="output">Result will appear here...</div>
+      <div class="findbar" id="findbarOutput" hidden>
+        <input id="findOutputQuery" type="text" placeholder="Find in output..." />
+        <span class="find-count" id="findOutputCount"></span>
+        <button id="findOutputPrev" title="Previous match (Shift+Enter)">&#8593;</button>
+        <button id="findOutputNext" title="Next match (Enter)">&#8595;</button>
+        <button id="findOutputClose" title="Close (Escape)">&#10005;</button>
+      </div>
+      <pre id="output" class="output" tabindex="0">Result will appear here...</pre>
     </div>
   </div>
   <script>
     const vscode = acquireVsCodeApi();
     const inputEl = document.getElementById('input');
+    const inputHighlightEl = document.getElementById('inputHighlight');
     const outputEl = document.getElementById('output');
+    const inputSectionEl = inputEl.closest('.section');
+    const outputSectionEl = outputEl.closest('.section');
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function highlightJson(str) {
+      const escaped = escapeHtml(str);
+      return escaped.replace(
+        /("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"(\\s*:)?|\\b(?:true|false|null)\\b|-?\\d+(?:\\.\\d+)?(?:[eE][+\\-]?\\d+)?)/g,
+        (match) => {
+          let cls = 'json-number';
+          if (/^"/.test(match)) {
+            cls = /:$/.test(match) ? 'json-key' : 'json-string';
+          } else if (/^(true|false)$/.test(match)) {
+            cls = 'json-boolean';
+          } else if (match === 'null') {
+            cls = 'json-null';
+          }
+          return '<span class="' + cls + '">' + match + '</span>';
+        }
+      );
+    }
+
+    function updateInputHighlight() {
+      // Trailing newline ensures the highlight box matches textarea height
+      const text = inputEl.value + (inputEl.value.endsWith('\\n') ? ' ' : '');
+      inputHighlightEl.innerHTML = highlightJson(text);
+    }
+
+    function syncScroll() {
+      inputHighlightEl.scrollTop = inputEl.scrollTop;
+      inputHighlightEl.scrollLeft = inputEl.scrollLeft;
+    }
 
     // Restore previous state
     const previousState = vscode.getState();
     if (previousState && previousState.input) {
       inputEl.value = previousState.input;
     }
+    updateInputHighlight();
 
     function runEvaluation() {
       vscode.postMessage({
@@ -519,11 +677,188 @@ class TestPanelProvider {
       debounceTimer = setTimeout(runEvaluation, 300);
     }
 
+    // --- Find / search support (per section) ---
+    function clearHighlights(container) {
+      const marks = container.querySelectorAll('mark.search-match');
+      marks.forEach(m => {
+        const parent = m.parentNode;
+        while (m.firstChild) parent.insertBefore(m.firstChild, m);
+        parent.removeChild(m);
+      });
+      container.normalize();
+    }
+
+    function highlightMatchesIn(container, query) {
+      clearHighlights(container);
+      if (!query) return [];
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      const matches = [];
+      const lowerQuery = query.toLowerCase();
+      textNodes.forEach(node => {
+        const text = node.nodeValue;
+        if (!text) return;
+        const lower = text.toLowerCase();
+        let idx = lower.indexOf(lowerQuery);
+        if (idx === -1) return;
+        const frag = document.createDocumentFragment();
+        let lastIdx = 0;
+        while (idx !== -1) {
+          if (idx > lastIdx) frag.appendChild(document.createTextNode(text.slice(lastIdx, idx)));
+          const mark = document.createElement('mark');
+          mark.className = 'search-match';
+          mark.textContent = text.slice(idx, idx + query.length);
+          frag.appendChild(mark);
+          matches.push(mark);
+          lastIdx = idx + query.length;
+          idx = lower.indexOf(lowerQuery, lastIdx);
+        }
+        if (lastIdx < text.length) frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+        node.parentNode.replaceChild(frag, node);
+      });
+      return matches;
+    }
+
+    function createFindController(opts) {
+      const { bar, query, count, prev, next, close, target, returnFocus, onScroll } = opts;
+      let matches = [];
+      let activeIdx = -1;
+
+      function updateCount() {
+        if (!query.value) {
+          count.textContent = '';
+        } else if (matches.length === 0) {
+          count.textContent = 'No results';
+        } else {
+          count.textContent = (activeIdx + 1) + ' / ' + matches.length;
+        }
+        const disabled = matches.length === 0;
+        prev.disabled = disabled;
+        next.disabled = disabled;
+      }
+
+      function setActive(scrollIntoView) {
+        matches.forEach(m => m.classList.remove('active'));
+        if (activeIdx >= 0 && activeIdx < matches.length) {
+          const active = matches[activeIdx];
+          active.classList.add('active');
+          if (scrollIntoView) {
+            active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            if (onScroll) requestAnimationFrame(onScroll);
+          }
+        }
+      }
+
+      function apply(preserveActive) {
+        if (bar.hidden) return;
+        const prevIdx = preserveActive ? activeIdx : -1;
+        matches = highlightMatchesIn(target, query.value);
+        if (matches.length === 0) {
+          activeIdx = -1;
+        } else if (prevIdx >= 0 && prevIdx < matches.length) {
+          activeIdx = prevIdx;
+        } else {
+          activeIdx = 0;
+        }
+        setActive(false);
+        updateCount();
+      }
+
+      function show() {
+        const wasHidden = bar.hidden;
+        bar.hidden = false;
+        query.focus();
+        query.select();
+        if (wasHidden && query.value) apply(false);
+      }
+
+      function hide() {
+        bar.hidden = true;
+        clearHighlights(target);
+        matches = [];
+        activeIdx = -1;
+        if (returnFocus) returnFocus.focus();
+      }
+
+      function move(delta) {
+        if (matches.length === 0) return;
+        activeIdx = (activeIdx + delta + matches.length) % matches.length;
+        setActive(true);
+        updateCount();
+      }
+
+      query.addEventListener('input', () => apply(false));
+      next.addEventListener('click', () => move(1));
+      prev.addEventListener('click', () => move(-1));
+      close.addEventListener('click', hide);
+      query.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          move(e.shiftKey ? -1 : 1);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          hide();
+        }
+      });
+
+      return { apply, show, hide, isOpen: () => !bar.hidden };
+    }
+
+    const inputFind = createFindController({
+      bar: document.getElementById('findbarInput'),
+      query: document.getElementById('findInputQuery'),
+      count: document.getElementById('findInputCount'),
+      prev: document.getElementById('findInputPrev'),
+      next: document.getElementById('findInputNext'),
+      close: document.getElementById('findInputClose'),
+      target: inputHighlightEl,
+      returnFocus: inputEl,
+      onScroll: () => {
+        inputEl.scrollTop = inputHighlightEl.scrollTop;
+        inputEl.scrollLeft = inputHighlightEl.scrollLeft;
+      },
+    });
+
+    const outputFind = createFindController({
+      bar: document.getElementById('findbarOutput'),
+      query: document.getElementById('findOutputQuery'),
+      count: document.getElementById('findOutputCount'),
+      prev: document.getElementById('findOutputPrev'),
+      next: document.getElementById('findOutputNext'),
+      close: document.getElementById('findOutputClose'),
+      target: outputEl,
+      returnFocus: outputEl,
+    });
+
+    function findControllerForFocus() {
+      const active = document.activeElement;
+      if (active && outputSectionEl.contains(active)) return outputFind;
+      return inputFind;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        findControllerForFocus().show();
+      } else if (e.key === 'Escape') {
+        if (inputFind.isOpen() || outputFind.isOpen()) {
+          e.preventDefault();
+          if (inputFind.isOpen()) inputFind.hide();
+          if (outputFind.isOpen()) outputFind.hide();
+        }
+      }
+    });
+
     // Auto-evaluate on input changes (debounced)
     inputEl.addEventListener('input', () => {
       vscode.setState({ input: inputEl.value });
+      updateInputHighlight();
+      inputFind.apply(true);
       scheduleEvaluation();
     });
+
+    inputEl.addEventListener('scroll', syncScroll);
 
     // Receive results and re-evaluation triggers from extension
     window.addEventListener('message', event => {
@@ -533,9 +868,10 @@ class TestPanelProvider {
           outputEl.textContent = message.error;
           outputEl.className = 'output error';
         } else {
-          outputEl.textContent = message.output;
+          outputEl.innerHTML = highlightJson(message.output);
           outputEl.className = 'output';
         }
+        outputFind.apply(true);
       } else if (message.command === 'reevaluate') {
         scheduleEvaluation();
       }
