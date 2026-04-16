@@ -22,8 +22,7 @@ Test your JSONata expressions against sample JSON data:
 1. Open a `.jsonata` file
 2. Click the **Play button (▶)** in the top-right corner of the editor
 3. Paste your JSON data in the **Input JSON** text area
-4. Click **Test Expression** (or press Cmd/Ctrl+Enter)
-5. View the output or any errors in the **Output** section
+4. View the output or any errors in the **Output** section
 
 The test panel automatically saves your input JSON and updates when you switch between different `.jsonata` files.
 
